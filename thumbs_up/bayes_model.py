@@ -4,21 +4,24 @@ import numpy as np
 
 class BayesModel(object):
 
-    def __init__(self,vocabulary,thetas=None):
+    def __init__(self,vocabulary,thetas=None,threshold=None):
         self.vocab=vocabulary
         if thetas==None:
-            self.theta=[]
+            self.theta=[[],[]]
         else:
             self.theta=thetas
-            
+
     def fit_laplace(self,train_df):
         total_positives=sum(train_df['y']==1)+2
+        total_negatives=sum(train_df['y']==0)+2
         for col in (train_df.columns):
             if col not in ['x','y']:
-                count_word=sum(train_df[col].loc[train_df['y']==1])+1
-                probability_word=count_word/total_positives
-                self.theta.append(probability_word)
-
+                count_word_pos=sum(train_df[col].loc[train_df['y']==1])+1
+                count_word_neg=sum(train_df[col].loc[train_df['y']==0])+1
+                probability_word_pos=count_word_pos/total_positives
+                probability_word_neg=count_word_neg/total_negatives
+                self.theta[0].append(probability_word_pos)
+                self.theta[1].append(probability_word_neg)
 
     def fit(self,train_df):
 
@@ -29,21 +32,25 @@ class BayesModel(object):
                 probability_word=count_word/total_positives
                 self.theta.append(probability_word)
         
-
     def predict(self,test_df):
 
-        count=1
-        for col in (test_df.columns):
-            if col not in ['x','y']:
-                test_df[col]=test_df[col]*self.theta[count]
-                count+=1
-        
         def total_probability(row):
-            total=1
-            for i in range(len(self.thetas)):
-                total=total*row['x'+str(i+1)]
-            return total
+            theta_pos=pd.Series(self.theta[0])
+            theta_neg=pd.Series(self.theta[1])
+            row=pd.Series(row[1:-1])
+            row.index=[x for x in range(len(theta_pos))]
+            temp=pd.DataFrame()
+            temp['theta_pos']=theta_pos
+            temp['theta_neg']=theta_neg
+            temp['row']=row
+            pos_predict=np.prod(temp['theta_pos'].loc[temp['row']!=0]*temp['row'].loc[temp['row']!=0])
+            neg_predict=np.prod(temp['theta_neg'].loc[temp['row']!=0]*temp['row'].loc[temp['row']!=0])
 
+            if pos_predict>neg_predict:
+                return(1)
+            else:
+                return(0)
+            
         return test_df.apply(total_probability,axis=1)
 
 def main(dataframe_path,train_path):
