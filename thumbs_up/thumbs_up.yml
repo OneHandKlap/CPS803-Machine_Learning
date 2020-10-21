@@ -1,0 +1,8 @@
+name: thumbs_up
+channels:
+  - defaults
+dependencies:
+  - pandas
+  - nltk
+prefix: C:\Users\pabou\miniconda3\envs\thumbs_up
+

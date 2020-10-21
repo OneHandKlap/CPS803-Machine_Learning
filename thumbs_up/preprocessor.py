@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from bayes_model import BayesModel
 import matplotlib.pyplot as plt
 import nltk
 from nltk.tokenize import RegexpTokenizer
@@ -15,9 +16,9 @@ import string
 class Preprocessor(object):
 
     #initialize preprocessor object by passing in a Pandas dataframe
-    def __init__(self,dataframe):
+    def __init__(self,dataframe,vocabulary=None):
         self.data=dataframe
-        self.vocabulary=None
+        self.vocabulary=vocabulary
 
     #specify column title to be tokenized
     #tokenization refers to the 'splitting up' of individual words within a block of text
@@ -87,22 +88,41 @@ class Preprocessor(object):
                         count+=1
 
                 new_df['x'+str(j+1)][i]=count
-        new_df['y']=self.data[y_column]
+        def make_binary(entry):
+            if entry=='positive':
+                return 1
+            else:
+                return 0
+        new_df['y']=self.data[y_column].apply(make_binary)
         self.data=new_df
 
 
-def main(dataframe):
-    dataframe=pd.read_csv(dataframe, names=['review','sentiment'])
-    preprocessor=Preprocessor(dataframe)
+def main(train_path,test_path):
+    train_df=pd.read_csv(train_path, names=['x','y'])
+    preprocessor=Preprocessor(train_df)
     
-    preprocessor.tokenize('review')
-    preprocessor.add_tags('review')
-    preprocessor.lemmatize('review')
-    preprocessor.create_vocabulary('review',10)
-    preprocessor.update_dataframe('review','sentiment')
-    print(preprocessor.data)
+    preprocessor.tokenize('x')
+    preprocessor.add_tags('x')
+    preprocessor.lemmatize('x')
+    preprocessor.create_vocabulary('x',10)
+    preprocessor.update_dataframe('x','y')
+    
+    model=BayesModel(preprocessor.vocabulary)
+    model.fit_laplace(preprocessor.data)
+
+    test_df=pd.read_csv(test_path,names=['x','y'])
+    preprocessor=Preprocessor(test_df,model.vocab)
+    preprocessor.tokenize('x')
+    preprocessor.add_tags('x')
+    preprocessor.lemmatize('x')
+    preprocessor.update_dataframe('x','y')
+
+    
+    print(model.theta)
+    
+
 
 
 
 if __name__=='__main__':
-    main('small1.csv')
+    main('small.csv','test.csv')
