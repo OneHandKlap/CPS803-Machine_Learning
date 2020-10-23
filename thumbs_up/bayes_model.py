@@ -4,12 +4,13 @@ import numpy as np
 
 class BayesModel(object):
 
-    def __init__(self,vocabulary,thetas=None,threshold=None):
+    def __init__(self,vocabulary,thetas=None):
         self.vocab=vocabulary
         if thetas==None:
             self.theta=[[],[]]
         else:
             self.theta=thetas
+
 
     def fit_laplace(self,train_df):
         total_positives=sum(train_df['y']==1)+2
@@ -46,12 +47,9 @@ class BayesModel(object):
             pos_predict=np.prod(temp['theta_pos'].loc[temp['row']!=0]*temp['row'].loc[temp['row']!=0])
             neg_predict=np.prod(temp['theta_neg'].loc[temp['row']!=0]*temp['row'].loc[temp['row']!=0])
 
-            if pos_predict>neg_predict:
-                return(1)
-            else:
-                return(0)
+            return pos_predict, neg_predict
             
-        return test_df.apply(total_probability,axis=1)
+        return zip(*test_df.apply(total_probability,axis=1))
 
 def main(dataframe_path,train_path):
 
