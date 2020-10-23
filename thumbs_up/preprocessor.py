@@ -10,6 +10,8 @@ from nltk.corpus import stopwords
 import re
 from nltk import FreqDist
 import string
+from sklearn.metrics import confusion_matrix
+import model_analyzer
 
 
 #purpose of this module is to make it straightforward and simple to conduct preprocessing for NLP projects
@@ -100,10 +102,9 @@ def make_binary(entry):
         return 1
     else:
         return 0
-def threshold_scan(train_path,test_path):
-    thresholds=[round((x*0.05),2) for x in range(20,-1,-1)]
-    metrics=pd.DataFrame()
 
+def main(train_path,test_path):
+    
     train_df=pd.read_csv(train_path, names=['x','y'])
     preprocessor=Preprocessor(train_df)
     
@@ -119,91 +120,11 @@ def threshold_scan(train_path,test_path):
     model=BayesModel(preprocessor.vocabulary)
     print("FITTING MODEL")
     model.fit_laplace(preprocessor.data)
-
-    test_df=pd.read_csv(test_path,names=['x','y'])
-    print("PROCESSING TEST DATA")
-    preprocessor=Preprocessor(test_df,model.vocab)
-    preprocessor.tokenize('x')
-    preprocessor.add_tags('x')
-    preprocessor.lemmatize('x')
-    print("UPDATING TEST DATAFRAME")
-    preprocessor.update_dataframe('x','y')
+    analyzer=model_analyzer.Analyzer(model,test_path)
+    thresholds=[round((0.05*x),2) for x in range(20,-1,-1)]
     
+    analyzer.threshold_scan(thresholds,'threshold.csv')
 
-    print("USING MODEL TO PREDICT SENTIMENT")
-    preprocessor.data['pos_score'],preprocessor.data['neg_score']=(model.predict(preprocessor.data))
-
-    def make_judgement(row,threshold):
-        
-        if row['pos_score']/(row['pos_score']+row['neg_score'])>threshold:
-            return 1
-        else:
-            return 0
-    metric_acc=[]
-    for i in thresholds:
-        preprocessor.data['results']=preprocessor.data.apply(make_judgement, args=(i,),axis=1)
-        preprocessor.data['results']=preprocessor.data['results'].astype('bool')
-        preprocessor.data['y']=preprocessor.data['y'].astype('bool')
-        count_true=sum(preprocessor.data['results'])
-        count_false=sum(~preprocessor.data['results'])
-        label_true=sum(preprocessor.data['y'])
-        label_false=sum(~preprocessor.data['y'])
-        true_pos=sum(preprocessor.data['results']&preprocessor.data['y'])
-        true_neg=sum(~preprocessor.data['results']&~preprocessor.data['y'])
-        false_pos=sum(preprocessor.data['results']&~preprocessor.data['y'])
-        false_neg=sum(~preprocessor.data['results']&preprocessor.data['y'])
-        accuracy=(true_pos+true_neg)/(true_pos+true_neg+false_pos+false_neg)
-        try:
-            precision=true_pos/(true_pos+true_neg)
-        except ZeroDivisionError:
-            precision= 0
-            
-        try:
-            recall=true_pos/(true_pos+false_pos)
-        except ZeroDivisionError:
-            recall=0
-        try:
-            spec=true_neg/(true_neg+false_neg)
-        except ZeroDivisionError:
-            spec=0
-        try:
-            f1=(2*precision*recall)/(precision+recall)
-        except ZeroDivisionError:
-            f1=0
-
-        metric_acc.append([i,count_true,count_false,label_true,label_false,true_pos,true_neg,false_pos,false_neg,accuracy,precision,recall,spec,f1])
-
-    metrics=pd.DataFrame(metric_acc)
-    metrics.columns=['threshold','guess_true','guess_false','label_true','label_false','tp','tn','fp','fn','accuracy','precision','recall','specificity','harmonic_mean']
-    metrics.to_csv('example.csv')
-def main(train_path,test_path):
-    threshold_scan(train_path,test_path)
-    
-    # train_df=pd.read_csv(train_path, names=['x','y'])
-    # preprocessor=Preprocessor(train_df)
-    
-    # print("PROCESSING TRAINING DATA")
-    # preprocessor.tokenize('x')
-    # preprocessor.add_tags('x')
-    # preprocessor.lemmatize('x')
-    # print("CREATING MODEL VOCABULARY")
-    # preprocessor.create_vocabulary('x',10)
-    # print("UPDATING TRAINING DATAFRAME")
-    # preprocessor.update_dataframe('x','y')
-    
-    # model=BayesModel(preprocessor.vocabulary)
-    # print("FITTING MODEL")
-    # model.fit_laplace(preprocessor.data)
-
-    # test_df=pd.read_csv(test_path,names=['x','y'])
-    # print("PROCESSING TEST DATA")
-    # preprocessor=Preprocessor(test_df,model.vocab)
-    # preprocessor.tokenize('x')
-    # preprocessor.add_tags('x')
-    # preprocessor.lemmatize('x')
-    # print("UPDATING TEST DATAFRAME")
-    # preprocessor.update_dataframe('x','y')
-    
 
     # print("USING MODEL TO PREDICT SENTIMENT")
     # preprocessor.data['pos_score'],preprocessor.data['neg_score']=(model.predict(preprocessor.data))
@@ -216,4 +137,4 @@ def main(train_path,test_path):
 
 
 if __name__=='__main__':
-    main('small.csv','test.csv')
+    main('small1.csv','test.csv')
