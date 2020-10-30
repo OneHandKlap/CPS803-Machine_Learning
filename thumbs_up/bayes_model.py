@@ -45,17 +45,12 @@ class BayesModel(object):
             temp['theta_neg']=theta_neg
             temp['row']=row
             pos_predict=np.prod(temp['theta_pos'].loc[temp['row']!=0]*temp['row'].loc[temp['row']!=0])
-            neg_predict=np.prod(temp['theta_neg'].loc[temp['row']!=0]*temp['row'].loc[temp['row']!=0])
+            neg_predict=np.prod(temp['theta_neg'].loc[temp['row']!=0]*temp
+            ['row'].loc[temp['row']!=0])
+            likelihood_pos=round(pos_predict/(pos_predict+neg_predict),2)
 
-            return pos_predict, neg_predict
+            return pos_predict, neg_predict, likelihood_pos
             
         return zip(*test_df.apply(total_probability,axis=1))
 
-def main(dataframe_path,train_path):
-
-    model=BayesModel()
-    model.fit(dataframe_path)
-
-
-if __name__=='__main__':
-    main('converted_small.csv')
+    

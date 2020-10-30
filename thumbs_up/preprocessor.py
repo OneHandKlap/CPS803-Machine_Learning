@@ -72,6 +72,7 @@ class Preprocessor(object):
                     count+=1
         self.vocabulary= vocabulary
 
+
     #once a vocabulary has been established, this function recreates the dataframe
     #it creates a specific column for each word in the vocabulary and includes the number of times that word
     #is found in each text
@@ -97,6 +98,11 @@ class Preprocessor(object):
                 return 0
         new_df['y']=self.data[y_column].apply(make_binary)
         self.data=new_df
+
+    def plot_confusion(self):
+        print(self.data['y'])
+        print(self.data['like'])
+
 def make_binary(entry):
     if entry=='positive':
         return 1
@@ -122,8 +128,10 @@ def main(train_path,test_path):
     model.fit_laplace(preprocessor.data)
     analyzer=model_analyzer.Analyzer(model,test_path)
     thresholds=[round((0.05*x),2) for x in range(20,-1,-1)]
+    analyzer.threshold_scan(thresholds,'threshold_scan.csv')
+    analyzer.print_threshold_distribution('distribution.png')
+    analyzer.print_confusion_matrix()
     
-    analyzer.threshold_scan(thresholds,'threshold.csv')
 
 
     # print("USING MODEL TO PREDICT SENTIMENT")
@@ -131,10 +139,6 @@ def main(train_path,test_path):
     # preprocessor.data.to_csv('result.csv')
 
     # print("SCORE: "+str(len(preprocessor.data['results'].loc[preprocessor.data['results']==preprocessor.data['y']])/len(preprocessor.data)))
-    
-
-
-
 
 if __name__=='__main__':
     main('small1.csv','test.csv')
