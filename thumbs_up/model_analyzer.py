@@ -91,22 +91,23 @@ class Analyzer(object):
         self.threshold_scan=metrics
         return
 
-    def print_threshold_distribution(self,output_path=None):
+    def print_prob_distribution(self,output_path=None):
 
 
         plt.figure()
         os=self.test_data['likelihood_pos'].loc[self.test_data['y']==1]
         xs=self.test_data['likelihood_pos'].loc[self.test_data['y']==0]
         
-        plt.plot([0 for x in range(len(xs))],os,'go' ,linewidth=2,label="label==1")
-        plt.plot([0 for x in range(len(os))],xs, 'bx',linewidth=2,label="label==0")
+        plt.plot([0 for x in range(len(os))],os,'go' ,linewidth=2,label="label==1")
+        plt.plot([0 for x in range(len(xs))],xs, 'bx',linewidth=2,label="label==0")
 
         plt.tick_params(
             axis='x',          # changes apply to the x-axis
             which='both',      # both major and minor ticks are affected
             bottom=False,      # ticks along the bottom edge are off 
             labelbottom=False)
-        plt.ylabel("Threshold")
+        plt.ylabel("Probability")
+        plt.title(output_path)
         plt.legend()
         if output_path is not None:
             plt.savefig(output_path)
@@ -116,6 +117,7 @@ class Analyzer(object):
     def print_confusion_matrix(self,threshold=0.5,output_path=None):
 
         #confusion matrix plot borrowed from "https://vitalflux.com/python-draw-confusion-matrix-matplotlib/"
+        print(self.test_data)
         conf_matrix=confusion_matrix(self.test_data['y'],self.test_data['likelihood_pos'].apply(lambda x: x>=threshold))
         fig, ax = plt.subplots(figsize=(7.5, 7.5))
         ax.matshow(conf_matrix, cmap=plt.cm.Blues, alpha=0.3)
@@ -125,7 +127,7 @@ class Analyzer(object):
         
         plt.xlabel('Predictions', fontsize=18)
         plt.ylabel('Actuals', fontsize=18)
-        plt.title('Confusion Matrix', fontsize=18)
+        plt.title(output_path, fontsize=18)
         if output_path is not None:
             plt.savefig(output_path)
         else:

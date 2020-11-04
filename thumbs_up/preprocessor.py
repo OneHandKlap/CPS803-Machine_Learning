@@ -1,8 +1,10 @@
 import pandas as pd
 import numpy as np
+import model_analyzer
 from bayes_model import BayesModel
 import matplotlib.pyplot as plt
 import nltk
+from nltk import TextCollection
 from nltk.tokenize import RegexpTokenizer
 from nltk.tag import pos_tag
 from nltk.stem.wordnet import WordNetLemmatizer
@@ -72,6 +74,52 @@ class Preprocessor(object):
                     count+=1
         self.vocabulary= vocabulary
 
+    ##TODO CREATE NEW VOCAB FUNCTION##
+
+    def create_vocabulary2(self,column,vocab_length):
+        vocabulary=[]
+        for text in self.data[column]:
+            vocabulary= vocabulary+text
+        freq_dist_vocab=FreqDist(vocabulary)
+
+
+        self.vocabulary=[i[0] for i in freq_dist_vocab.most_common(vocab_length)]
+        
+    #returns the n words with highest TFIDF scores
+    def tfidf(self,n):
+        collection_of_texts=self.data['x']
+        freq_dist_collection=[]
+        total_docs=len(collection_of_texts)
+        def docs_with_word(word,collection_of_texts):
+            result=0
+            for text in collection_of_texts:
+                if word in text:
+                    result+=1
+            if result==0:
+                return 1
+            else:
+                return result
+        for text in collection_of_texts:
+            freq_dist_collection.append(FreqDist(text))
+        tdif_acc={}
+        for text in collection_of_texts:
+            freq_dist_text=FreqDist(text)
+            
+            for word in freq_dist_text.most_common(1000):
+                TF=word[1]/len(text)
+
+                number_docs_with_word=docs_with_word(word[1],collection_of_texts)
+
+                IDF=np.log(total_docs/number_docs_with_word)
+
+                tdif_acc[word[0]]=TF*IDF
+        tdif_acc=sorted(tdif_acc.items(),key=lambda x:x[1],reverse=True)
+        print(tdif_acc)
+        tdif_acc=[x[0] for x in tdif_acc]
+        
+
+        self.vocabulary= tdif_acc[:n]
+
 
     #once a vocabulary has been established, this function recreates the dataframe
     #it creates a specific column for each word in the vocabulary and includes the number of times that word
@@ -98,6 +146,7 @@ class Preprocessor(object):
                 return 0
         new_df['y']=self.data[y_column].apply(make_binary)
         self.data=new_df
+        #new_df.to_csv('output.csv')
 
     def plot_confusion(self):
         print(self.data['y'])
@@ -108,37 +157,43 @@ def make_binary(entry):
         return 1
     else:
         return 0
-
-def main(train_path,test_path):
-    
-    train_df=pd.read_csv(train_path, names=['x','y'])
+def run_experiment(train,test,output_path='C:\\Users\\pabou\\Documents\\GitHub\\CPS803-Machine_Learning\\thumbs_up\\results\\',output_prefix='output',vocab_type='normal',analysis=True):
+    train_df=pd.read_csv(train,names=['x','y'])
     preprocessor=Preprocessor(train_df)
-    
-    print("PROCESSING TRAINING DATA")
     preprocessor.tokenize('x')
     preprocessor.add_tags('x')
     preprocessor.lemmatize('x')
-    print("CREATING MODEL VOCABULARY")
-    preprocessor.create_vocabulary('x',10)
-    print("UPDATING TRAINING DATAFRAME")
+    if vocab_type=='normal':
+        preprocessor.create_vocabulary('x',15)
+    elif vocab_type=='global':
+        preprocessor.create_vocabulary2('x',len(train_df)*5)
+    elif vocab_type=='tfidf':
+        preprocessor.tfidf(len(train_df)*5)
     preprocessor.update_dataframe('x','y')
-    
+
     model=BayesModel(preprocessor.vocabulary)
-    print("FITTING MODEL")
     model.fit_laplace(preprocessor.data)
-    analyzer=model_analyzer.Analyzer(model,test_path)
-    thresholds=[round((0.05*x),2) for x in range(20,-1,-1)]
-    analyzer.threshold_scan(thresholds,'threshold_scan.csv')
-    analyzer.print_threshold_distribution('distribution.png')
-    analyzer.print_confusion_matrix()
+
+    if analysis:
+        analyzer=model_analyzer.Analyzer(model, test)
+        thresholds=[round((0.05*x),2) for x in range(20,-1,-1)]
+        analyzer.threshold_scan(thresholds,output_path+output_prefix+'_threshold_scan.csv')
+        analyzer.print_prob_distribution(output_path+output_prefix+'_prob_distribution.png')
+        analyzer.print_confusion_matrix(threshold=0.5, output_path=output_path+output_prefix+'__confusion_matrix.png')
+
+def main(train_path,test_path):
+    print("RUNNING NORMAL")
+    run_experiment(train_path,test_path,output_prefix='normal')
+    print("RUNNING GLOBAL")
+    run_experiment(train_path,test_path,output_prefix='global',vocab_type='global')
+    run_experiment(train_path,test_path,output_prefix='tfidf',vocab_type='tfidf')
+
     
 
 
-    # print("USING MODEL TO PREDICT SENTIMENT")
-    # preprocessor.data['pos_score'],preprocessor.data['neg_score']=(model.predict(preprocessor.data))
-    # preprocessor.data.to_csv('result.csv')
+    
 
-    # print("SCORE: "+str(len(preprocessor.data['results'].loc[preprocessor.data['results']==preprocessor.data['y']])/len(preprocessor.data)))
+    
 
 if __name__=='__main__':
-    main('small1.csv','test.csv')
+    main('train_small.csv','test.csv')
