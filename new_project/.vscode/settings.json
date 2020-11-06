@@ -1,0 +1,5 @@
+{
+    "python.pythonPath": "C:\\Users\\pabou\\miniconda3\\python.exe\"",
+    "python.condaPath": "\"C:\\Users\\paboud\\miniconda3\\python.exe\"",
+    "terminal.integrated.shellArgs.windows":[“/K”, "C:\\Users\\pabou\\miniconda3\\Scripts\\activate.bat C:\\Users\\pabou\\miniconda3 & conda activate thumbs_up & python”],
+}
